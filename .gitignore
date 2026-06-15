@@ -1,0 +1,11 @@
+# Rust build output
+/target
+
+# Release packaging artifacts (published to GitHub Releases, not committed)
+/dist
+*.exe
+*.zip
+
+# Runtime files generated next to the executable
+claude-wakeup.toml
+claude-wakeup.log
