@@ -4,6 +4,7 @@
 
 **常駐 Windows 工具列的小工具：① 依排程做廉價 ping 讓 Claude 用量視窗保持喚醒；② 用 GUI 安排「半夜任務」，由會喚醒電腦的 Windows 排程在你不在時自動執行。**
 
+[![Version](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/rrr004rrr/ClaudeWakeup/releases/tag/v0.2.0)
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows)](https://github.com/rrr004rrr/ClaudeWakeup)
 [![Built with Rust](https://img.shields.io/badge/built%20with-Rust-000000?logo=rust)](https://www.rust-lang.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)

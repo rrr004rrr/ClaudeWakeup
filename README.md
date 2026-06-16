@@ -4,6 +4,7 @@
 
 **A Windows tray app that (1) keeps your Claude usage window warm with cheap scheduled pings, and (2) lets you schedule overnight tasks from a GUI — each backed by a wake-the-PC Task Scheduler job that runs while you're away.**
 
+[![Version](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/rrr004rrr/ClaudeWakeup/releases/tag/v0.2.0)
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows)](https://github.com/rrr004rrr/ClaudeWakeup)
 [![Built with Rust](https://img.shields.io/badge/built%20with-Rust-000000?logo=rust)](https://www.rust-lang.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
