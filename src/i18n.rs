@@ -1,239 +1,194 @@
-//! Lightweight, dependency-free localization.
-//!
-//! English is the default language. The active language is selected by the
-//! `language` key in `claude-wakeup.toml` (e.g. `language = zh-TW`). Adding a
-//! new language means adding one arm to each `match self { ... }` below — no
-//! external files, so everything stays inside the single static binary.
+//! Lightweight, dependency-free localization. For now: English + 繁體中文,
+//! switchable from the tray menu. Add a language by extending the enum and the
+//! matches below.
 
-/// Supported UI languages. Extend this enum (and the matches below) to add more.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum Lang {
     En,
+    #[default]
     ZhTw,
-    ZhCn,
-    Ja,
-}
-
-/// Comment lines written into the generated config file, already localized.
-pub struct CfgComments {
-    pub header: &'static str,
-    pub language: &'static str,
-    pub enabled: &'static str,
-    pub mode: &'static str,
-    pub interval: &'static str,
-    pub daily: &'static str,
-    pub command: &'static str,
-    pub extra: &'static str,
 }
 
 impl Lang {
-    /// Parse a language tag such as `en`, `zh-TW`, `zh_cn`, or `ja`.
-    /// Anything unrecognized falls back to English (the default language).
     pub fn parse(s: &str) -> Lang {
         match s.trim().to_ascii_lowercase().replace('_', "-").as_str() {
-            "zh-tw" | "zh-hant" | "zh-hant-tw" => Lang::ZhTw,
-            "zh-cn" | "zh-hans" | "zh-hans-cn" | "zh" => Lang::ZhCn,
-            "ja" | "ja-jp" => Lang::Ja,
+            "zh-tw" | "zh-hant" | "zh" | "zh-cn" | "zh-hans" => Lang::ZhTw,
             _ => Lang::En,
         }
     }
 
-    /// Canonical tag written back into the config file.
     pub fn code(self) -> &'static str {
         match self {
             Lang::En => "en",
             Lang::ZhTw => "zh-TW",
-            Lang::ZhCn => "zh-CN",
-            Lang::Ja => "ja",
         }
     }
 
-    // ---- tray + menu ------------------------------------------------------
-
-    pub fn tray_tip(self) -> &'static str {
+    fn pick(self, en: &'static str, zh: &'static str) -> &'static str {
         match self {
-            Lang::En => "Claude Wakeup",
-            Lang::ZhTw => "Claude 喚醒",
-            Lang::ZhCn => "Claude 唤醒",
-            Lang::Ja => "Claude ウェイクアップ",
+            Lang::En => en,
+            Lang::ZhTw => zh,
         }
     }
 
-    pub fn running(self) -> &'static str {
-        match self {
-            Lang::En => "Running",
-            Lang::ZhTw => "執行中",
-            Lang::ZhCn => "运行中",
-            Lang::Ja => "実行中",
-        }
+    // ---- manager window ---------------------------------------------------
+    pub fn win_title(self) -> &'static str {
+        self.pick("ClaudeWakeup — Tasks", "ClaudeWakeup — 任務")
+    }
+    pub fn lbl_name(self) -> &'static str {
+        self.pick("Name", "名稱")
+    }
+    pub fn lbl_time(self) -> &'static str {
+        self.pick("Time (HH:MM)", "時間 (HH:MM)")
+    }
+    pub fn lbl_freq(self) -> &'static str {
+        self.pick("Frequency", "頻率")
+    }
+    pub fn lbl_dir(self) -> &'static str {
+        self.pick("Folder", "資料夾")
+    }
+    pub fn btn_browse(self) -> &'static str {
+        self.pick("Browse…", "瀏覽…")
+    }
+    pub fn lbl_model(self) -> &'static str {
+        self.pick("Model", "模型")
+    }
+    pub fn lbl_skip(self) -> &'static str {
+        self.pick("Skip permissions", "跳過權限")
+    }
+    pub fn lbl_timeout(self) -> &'static str {
+        self.pick("Timeout (min)", "逾時 (分)")
+    }
+    pub fn lbl_message(self) -> &'static str {
+        self.pick("Task message", "任務訊息")
+    }
+    pub fn freq_once(self) -> &'static str {
+        self.pick("Once", "單次")
+    }
+    pub fn freq_daily(self) -> &'static str {
+        self.pick("Daily", "每日")
+    }
+    pub fn btn_edit(self) -> &'static str {
+        self.pick("Edit selected", "編輯所選")
+    }
+    pub fn btn_save(self) -> &'static str {
+        self.pick("Save task", "儲存任務")
+    }
+    pub fn btn_new(self) -> &'static str {
+        self.pick("New / clear", "新任務 / 清除")
+    }
+    pub fn btn_complete(self) -> &'static str {
+        self.pick("Mark done (remove)", "完成（移除）")
+    }
+    pub fn btn_view_output(self) -> &'static str {
+        self.pick("View output", "查看輸出")
+    }
+    pub fn btn_close(self) -> &'static str {
+        self.pick("Close", "關閉")
     }
 
-    pub fn paused(self) -> &'static str {
-        match self {
-            Lang::En => "Paused",
-            Lang::ZhTw => "已暫停",
-            Lang::ZhCn => "已暂停",
-            Lang::Ja => "一時停止",
-        }
+    // ---- list columns + status -------------------------------------------
+    pub fn col_name(self) -> &'static str {
+        self.pick("Name", "名稱")
+    }
+    pub fn col_time(self) -> &'static str {
+        self.pick("Time", "時間")
+    }
+    pub fn col_freq(self) -> &'static str {
+        self.pick("Freq", "頻率")
+    }
+    pub fn col_status(self) -> &'static str {
+        self.pick("Status", "狀態")
+    }
+    pub fn st_pending(self) -> &'static str {
+        self.pick("Pending", "待執行")
+    }
+    pub fn st_running(self) -> &'static str {
+        self.pick("Running", "執行中")
+    }
+    pub fn st_done(self) -> &'static str {
+        self.pick("Done", "已完成")
+    }
+    pub fn st_failed(self) -> &'static str {
+        self.pick("Failed", "失敗")
     }
 
-    pub fn menu_enable(self) -> &'static str {
-        match self {
-            Lang::En => "Enabled",
-            Lang::ZhTw => "啟用",
-            Lang::ZhCn => "启用",
-            Lang::Ja => "有効",
-        }
+    // ---- messages ---------------------------------------------------------
+    pub fn title_info(self) -> &'static str {
+        self.pick("ClaudeWakeup", "ClaudeWakeup")
+    }
+    pub fn msg_need_prompt(self) -> &'static str {
+        self.pick(
+            "Please enter a task message and a time (HH:MM).",
+            "請輸入任務訊息與時間 (HH:MM)。",
+        )
+    }
+    pub fn msg_added(self) -> &'static str {
+        self.pick(
+            "Task added and scheduled (the PC will wake to run it).",
+            "任務已新增並排程（屆時會喚醒電腦執行）。",
+        )
+    }
+    pub fn msg_select_first(self) -> &'static str {
+        self.pick("Select a task in the list first.", "請先在清單中選一筆任務。")
+    }
+    pub fn msg_sched_failed(self) -> &'static str {
+        self.pick(
+            "Task saved, but scheduling failed. Try running as Administrator.",
+            "任務已存，但排程註冊失敗。可嘗試以系統管理員身分執行。",
+        )
+    }
+    pub fn msg_no_output(self) -> &'static str {
+        self.pick("This task has no output yet.", "這筆任務還沒有輸出。")
+    }
+    pub fn msg_saved(self) -> &'static str {
+        self.pick("Saved.", "已儲存。")
+    }
+    pub fn msg_updated(self) -> &'static str {
+        self.pick("Task updated and rescheduled.", "任務已更新並重新排程。")
     }
 
-    pub fn menu_run_now(self) -> &'static str {
-        match self {
-            Lang::En => "Run now (wake Claude)",
-            Lang::ZhTw => "立即執行（喚醒 Claude）",
-            Lang::ZhCn => "立即执行（唤醒 Claude）",
-            Lang::Ja => "今すぐ実行（Claude を起動）",
-        }
+    // ---- keep-warm window -------------------------------------------------
+    pub fn warm_title(self) -> &'static str {
+        self.pick("ClaudeWakeup — Keep-warm", "ClaudeWakeup — 保溫")
     }
-
-    pub fn menu_edit_config(self) -> &'static str {
-        match self {
-            Lang::En => "Edit config…",
-            Lang::ZhTw => "編輯設定檔…",
-            Lang::ZhCn => "编辑配置文件…",
-            Lang::Ja => "設定ファイルを編集…",
-        }
+    pub fn warm_enabled_lbl(self) -> &'static str {
+        self.pick("Enable keep-warm", "啟用保溫")
     }
-
-    pub fn menu_open_log(self) -> &'static str {
-        match self {
-            Lang::En => "Open log",
-            Lang::ZhTw => "開啟紀錄檔",
-            Lang::ZhCn => "打开日志",
-            Lang::Ja => "ログを開く",
-        }
+    pub fn warm_notify_lbl(self) -> &'static str {
+        self.pick("Enable push", "啟用推播")
     }
-
-    pub fn menu_reload(self) -> &'static str {
-        match self {
-            Lang::En => "Reload config",
-            Lang::ZhTw => "重新載入設定",
-            Lang::ZhCn => "重新加载配置",
-            Lang::Ja => "設定を再読み込み",
-        }
+    pub fn warm_mode_lbl(self) -> &'static str {
+        self.pick("Schedule", "排程方式")
     }
-
-    pub fn menu_quit(self) -> &'static str {
-        match self {
-            Lang::En => "Quit",
-            Lang::ZhTw => "結束",
-            Lang::ZhCn => "退出",
-            Lang::Ja => "終了",
-        }
+    pub fn warm_mode_interval(self) -> &'static str {
+        self.pick("Interval", "間隔")
     }
-
-    // ---- status line ------------------------------------------------------
-
-    /// "Every {every} min · next in ~{mins} min"
-    pub fn sched_interval(self, every: u64, mins: u64) -> String {
-        match self {
-            Lang::En => format!("Every {every} min · next in ~{mins} min"),
-            Lang::ZhTw => format!("每 {every} 分鐘 · 約 {mins} 分鐘後執行"),
-            Lang::ZhCn => format!("每 {every} 分钟 · 约 {mins} 分钟后执行"),
-            Lang::Ja => format!("{every} 分ごと · 約 {mins} 分後に実行"),
-        }
+    pub fn warm_mode_daily(self) -> &'static str {
+        self.pick("Daily", "每日")
     }
-
-    pub fn sched_daily(self, times: &str) -> String {
-        match self {
-            Lang::En => format!("Daily {times}"),
-            Lang::ZhTw => format!("每日 {times}"),
-            Lang::ZhCn => format!("每日 {times}"),
-            Lang::Ja => format!("毎日 {times}"),
-        }
+    pub fn warm_interval_lbl(self) -> &'static str {
+        self.pick("Interval (min)", "間隔（分）")
     }
-
-    // ---- run results (written to the log + tooltip) -----------------------
-
-    pub fn run_ok(self, time: &str, reply: &str) -> String {
-        match self {
-            Lang::En => format!("[{time}] OK — {reply}"),
-            Lang::ZhTw => format!("[{time}] 成功 — {reply}"),
-            Lang::ZhCn => format!("[{time}] 成功 — {reply}"),
-            Lang::Ja => format!("[{time}] 成功 — {reply}"),
-        }
+    pub fn warm_daily_lbl(self) -> &'static str {
+        self.pick("Daily times", "每日時間")
     }
-
-    pub fn run_failed(self, time: &str, code: Option<i32>, err: &str) -> String {
-        match self {
-            Lang::En => format!("[{time}] Failed (exit {code:?}) {err}"),
-            Lang::ZhTw => format!("[{time}] 失敗（結束碼 {code:?}）{err}"),
-            Lang::ZhCn => format!("[{time}] 失败（退出码 {code:?}）{err}"),
-            Lang::Ja => format!("[{time}] 失敗（終了コード {code:?}）{err}"),
-        }
+    pub fn warm_model_lbl(self) -> &'static str {
+        self.pick("Model", "模型")
     }
-
-    pub fn run_error(self, time: &str, err: &str) -> String {
-        match self {
-            Lang::En => format!("[{time}] Error — {err}"),
-            Lang::ZhTw => format!("[{time}] 錯誤 — {err}"),
-            Lang::ZhCn => format!("[{time}] 错误 — {err}"),
-            Lang::Ja => format!("[{time}] エラー — {err}"),
-        }
+    pub fn warm_run(self) -> &'static str {
+        self.pick("Ping now", "立即執行一次")
     }
-
-    pub fn log_created(self) -> &'static str {
-        match self {
-            Lang::En => "[log file created]",
-            Lang::ZhTw => "[紀錄檔已建立]",
-            Lang::ZhCn => "[日志文件已创建]",
-            Lang::Ja => "[ログファイルを作成しました]",
-        }
+    pub fn btn_apply(self) -> &'static str {
+        self.pick("Save", "儲存")
     }
-
-    // ---- generated config-file comments -----------------------------------
-
-    pub fn cfg_comments(self) -> CfgComments {
-        match self {
-            Lang::En => CfgComments {
-                header: "ClaudeWakeup configuration. After editing, choose \"Reload config\" from the tray menu.",
-                language: "UI language: en | zh-TW | zh-CN | ja",
-                enabled: "Master switch (true = on / false = paused).",
-                mode: "Schedule mode: interval | daily (fixed clock times)",
-                interval: "interval mode: minutes between wake-ups (Claude's usage window is ~5 h = 300).",
-                daily: "daily mode: comma-separated 24-hour local times.",
-                command: "Wake-up command. The defaults keep token cost minimal.",
-                extra: "Extra command-line arguments, space-separated (optional).",
-            },
-            Lang::ZhTw => CfgComments {
-                header: "ClaudeWakeup 設定檔。修改後，請在工具列選單選擇「重新載入設定」。",
-                language: "介面語言：en | zh-TW | zh-CN | ja",
-                enabled: "總開關（true 啟用 / false 暫停）。",
-                mode: "排程模式：interval（間隔）| daily（每日固定時間）",
-                interval: "interval 模式：每隔幾分鐘喚醒一次（Claude 用量視窗約 5 小時 = 300）。",
-                daily: "daily 模式：以逗號分隔的 24 小時制本地時間。",
-                command: "喚醒指令。預設值已將 token 花費降到最低。",
-                extra: "額外的命令列參數，以空白分隔（選填）。",
-            },
-            Lang::ZhCn => CfgComments {
-                header: "ClaudeWakeup 配置文件。修改后，请在托盘菜单选择“重新加载配置”。",
-                language: "界面语言：en | zh-TW | zh-CN | ja",
-                enabled: "总开关（true 启用 / false 暂停）。",
-                mode: "调度模式：interval（间隔）| daily（每日固定时间）",
-                interval: "interval 模式：每隔几分钟唤醒一次（Claude 用量窗口约 5 小时 = 300）。",
-                daily: "daily 模式：以逗号分隔的 24 小时制本地时间。",
-                command: "唤醒命令。默认值已将 token 花费降到最低。",
-                extra: "额外的命令行参数，以空格分隔（可选）。",
-            },
-            Lang::Ja => CfgComments {
-                header: "ClaudeWakeup の設定ファイル。編集後、トレイメニューの「設定を再読み込み」を選択してください。",
-                language: "UI 言語：en | zh-TW | zh-CN | ja",
-                enabled: "メインスイッチ（true = 有効 / false = 一時停止）。",
-                mode: "スケジュールモード：interval（間隔）| daily（毎日の固定時刻）",
-                interval: "interval モード：何分ごとに起動するか（Claude の利用枠は約 5 時間 = 300）。",
-                daily: "daily モード：カンマ区切りの 24 時間表記のローカル時刻。",
-                command: "起動コマンド。既定値はトークン消費を最小限に抑えます。",
-                extra: "追加のコマンドライン引数（スペース区切り、任意）。",
-            },
-        }
+    pub fn warm_last(self) -> &'static str {
+        self.pick("Last result:", "上次結果：")
+    }
+    pub fn warm_running(self) -> &'static str {
+        self.pick("(pinging…)", "（執行中…）")
+    }
+    pub fn warm_never(self) -> &'static str {
+        self.pick("(not run yet)", "（尚未執行）")
     }
 }
