@@ -9,13 +9,26 @@ name = "ClaudeWakeup"
 path = "src/main.rs"
 
 [dependencies]
+native-windows-gui = { version = "1.0", default-features = false, features = [
+    "tray-notification",
+    "message-window",
+    "menu",
+    "textbox",
+    "combobox",
+    "list-view",
+    "file-dialog",
+    "image-decoder",
+    "cursor",
+    "frame",
+    "tooltip",
+] }
+native-windows-derive = "1.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 windows = { version = "0.58", features = [
     "Win32_Foundation",
-    "Win32_UI_WindowsAndMessaging",
-    "Win32_UI_Shell",
-    "Win32_System_LibraryLoader",
-    "Win32_Graphics_Gdi",
     "Win32_System_SystemInformation",
+    "Win32_System_Power",
 ] }
 
 [profile.release]
