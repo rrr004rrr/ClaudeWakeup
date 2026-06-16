@@ -9,3 +9,5 @@
 # Runtime files generated next to the executable
 claude-wakeup.toml
 claude-wakeup.log
+tasks.json
+/logs
