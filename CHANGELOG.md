@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-16
+
 ### Added
 - **Overnight task manager** with a GUI (built on native-windows-gui). From the
   tray, open a window to create tasks (name, start time, frequency, working
@@ -66,4 +68,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Size-optimized release build profile (`opt-level = "z"`, LTO, stripped,
   `panic = abort`).
 
+[0.2.0]: https://github.com/rrr004rrr/ClaudeWakeup/releases/tag/v0.2.0
 [0.1.0]: https://github.com/rrr004rrr/ClaudeWakeup/releases/tag/v0.1.0
