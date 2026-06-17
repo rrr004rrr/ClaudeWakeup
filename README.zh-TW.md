@@ -157,6 +157,17 @@ feishu_hook = https://open.feishu.cn/open-apis/bot/v2/hook/yyyyyyyy
 在「保溫設定…」勾選「啟用推播」，或在設定檔把 `warm_notify` 設為 `true`（仍需至少有一個
 `feishu_hook`）。「立即執行一次」會依「啟用推播」的勾選狀態決定要不要推播，可當作推播測試。
 
+## 疑難排解
+
+**保溫或任務顯示「program not found」（找不到 claude）** — 代表程式找不到 Claude CLI
+可執行檔。ClaudeWakeup 會搜尋 `PATH`（並嘗試 `.exe`／`.cmd`／`.bat`），以及
+`%USERPROFILE%\.local\bin` 和 `%APPDATA%\npm`。若仍找不到：
+
+- 先在終端機確認 CLI 可用：`claude --version`。
+- 若 `claude` 安裝在其他位置，請在 `claude-wakeup.toml` 把 `claude_path` 設為
+  `claude.exe`（或 `claude.cmd`）的完整路徑，例如
+  `claude_path = C:\Users\你\.local\bin\claude.exe`。
+
 ## 開機自動啟動
 
 把 `ClaudeWakeup.exe` 的捷徑放到「開機啟動」資料夾即可：

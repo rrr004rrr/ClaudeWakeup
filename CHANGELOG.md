@@ -6,6 +6,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-06-17
+
+### Fixed
+- **"program not found" when keeping warm / running tasks** on machines where the
+  Claude CLI isn't a plain `claude.exe` on `PATH`. `std::process::Command` on
+  Windows only resolves `claude` / `claude.exe` and ignores `PATHEXT`, so an
+  npm-installed `claude.cmd` (or a `~\.local\bin` install not on `PATH`) failed to
+  launch. The CLI path is now resolved against `PATH` trying `.exe`/`.cmd`/`.bat`/
+  `.com`, plus common Claude install dirs (`%USERPROFILE%\.local\bin`,
+  `%APPDATA%\npm`); batch shims are launched correctly.
+- Clearer keep-warm error when the CLI genuinely can't be found — it now says to
+  install the Claude CLI or set `claude_path` in `claude-wakeup.toml`.
+
 ## [0.3.0] - 2026-06-17
 
 ### Added
@@ -84,6 +97,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Size-optimized release build profile (`opt-level = "z"`, LTO, stripped,
   `panic = abort`).
 
+[0.3.1]: https://github.com/rrr004rrr/ClaudeWakeup/releases/tag/v0.3.1
 [0.3.0]: https://github.com/rrr004rrr/ClaudeWakeup/releases/tag/v0.3.0
 [0.2.0]: https://github.com/rrr004rrr/ClaudeWakeup/releases/tag/v0.2.0
 [0.1.0]: https://github.com/rrr004rrr/ClaudeWakeup/releases/tag/v0.1.0

@@ -16,7 +16,7 @@ use windows::Win32::System::Power::{
 
 use crate::config::Config;
 use crate::task::{load_tasks, save_tasks, Status, Task};
-use crate::util::{local_time_string, sanitize, timestamp_compact};
+use crate::util::{local_time_string, resolve_program, sanitize, timestamp_compact};
 
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
@@ -169,7 +169,7 @@ fn run_one(
         );
     }
 
-    let mut cmd = Command::new(&cfg.claude_path);
+    let mut cmd = Command::new(resolve_program(&cfg.claude_path));
     cmd.arg("-p").arg(&task.prompt);
     if !task.model.is_empty() {
         cmd.arg("--model").arg(&task.model);
@@ -209,7 +209,7 @@ pub fn warm_result() -> String {
 /// A cheap "keep the usage window warm" ping (`claude -p hi --model haiku`).
 /// Captures the outcome into WARM_RESULT so the UI can show it.
 pub fn run_keep_warm(cfg: &Config) {
-    let mut cmd = Command::new(&cfg.claude_path);
+    let mut cmd = Command::new(resolve_program(&cfg.claude_path));
     cmd.arg("-p").arg(&cfg.warm_prompt);
     if !cfg.warm_model.is_empty() {
         cmd.arg("--model").arg(&cfg.warm_model);
@@ -228,6 +228,10 @@ pub fn run_keep_warm(cfg: &Config) {
             let e: String = e.trim().replace('\n', " ").chars().take(60).collect();
             (false, format!("[{t}] failed (exit {:?}) {e}", o.status.code()))
         }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => (
+            false,
+            format!("[{t}] claude not found — install the Claude CLI or set claude_path in claude-wakeup.toml"),
+        ),
         Err(e) => (false, format!("[{t}] error — {e}")),
     };
     if let Ok(mut g) = WARM_RESULT.lock() {

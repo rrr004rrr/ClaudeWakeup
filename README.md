@@ -176,6 +176,18 @@ notify (they're far more frequent than tasks). To notify on every ping, tick
 least one `feishu_hook` is still required). "Ping now" follows the "Enable push"
 checkbox, so it doubles as a push test.
 
+## Troubleshooting
+
+**Keep-warm / a task says "program not found" (or "claude not found")** — the
+Claude CLI isn't where the app can launch it. ClaudeWakeup searches `PATH`
+(trying `.exe` / `.cmd` / `.bat`) plus `%USERPROFILE%\.local\bin` and
+`%APPDATA%\npm`. If it still can't be found:
+
+- Confirm the CLI works in a terminal: `claude --version`.
+- If `claude` lives elsewhere, set `claude_path` in `claude-wakeup.toml` to the
+  full path of `claude.exe` (or `claude.cmd`), e.g.
+  `claude_path = C:\Users\you\.local\bin\claude.exe`.
+
 ## Run at startup
 
 Place a shortcut to `ClaudeWakeup.exe` in your Startup folder:
