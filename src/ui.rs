@@ -57,6 +57,9 @@ pub struct App {
     #[nwg_control(parent: tray_menu, text: "保溫設定 / Keep-warm")]
     #[nwg_events(OnMenuItemSelected: [App::open_warm])]
     mi_warm: nwg::MenuItem,
+    #[nwg_control(parent: tray_menu, text: "推播設定 / Push")]
+    #[nwg_events(OnMenuItemSelected: [App::open_notif])]
+    mi_notif: nwg::MenuItem,
     #[nwg_control(parent: tray_menu)]
     sep1: nwg::MenuSeparator,
     #[nwg_control(parent: tray_menu, text: "語言 / Language")]
@@ -177,6 +180,27 @@ pub struct App {
     #[nwg_control(parent: warm_window, text: "Close", position: (320, 252), size: (108, 32))]
     #[nwg_events(OnButtonClick: [App::warm_hide])]
     wbtn_close: nwg::Button,
+
+    // ---- notifications (Feishu push) window ----
+    #[nwg_control(size: (540, 372), center: true, title: "Push", flags: "WINDOW", icon: Some(&data.icon))]
+    #[nwg_events(OnWindowClose: [App::notif_on_close(SELF, EVT_DATA)])]
+    notif_window: nwg::Window,
+
+    #[nwg_control(parent: notif_window, text: "", position: (12, 12), size: (516, 76))]
+    nlbl_intro: nwg::Label,
+    #[nwg_control(parent: notif_window, text: "Webhook URLs", position: (12, 96), size: (516, 22))]
+    nlbl_hooks: nwg::Label,
+    #[nwg_control(parent: notif_window, position: (12, 120), size: (516, 168), flags: "VISIBLE|VSCROLL|AUTOVSCROLL")]
+    nin_hooks: nwg::TextBox,
+    #[nwg_control(parent: notif_window, text: "Send test", position: (12, 300), size: (140, 34))]
+    #[nwg_events(OnButtonClick: [App::notif_test])]
+    nbtn_test: nwg::Button,
+    #[nwg_control(parent: notif_window, text: "Save", position: (300, 300), size: (108, 34))]
+    #[nwg_events(OnButtonClick: [App::notif_save])]
+    nbtn_save: nwg::Button,
+    #[nwg_control(parent: notif_window, text: "Close", position: (420, 300), size: (108, 34))]
+    #[nwg_events(OnButtonClick: [App::notif_hide])]
+    nbtn_close: nwg::Button,
 }
 
 impl App {
@@ -595,6 +619,52 @@ impl App {
             c.close(false);
         }
         self.warm_window.set_visible(false);
+    }
+
+    // ---- notifications (Feishu push) window ----
+    fn open_notif(&self) {
+        let l = self.lang();
+        self.notif_window.set_text(l.notif_title());
+        self.nlbl_intro.set_text(l.notif_intro());
+        self.nlbl_hooks.set_text(l.notif_hooks_lbl());
+        self.nbtn_test.set_text(l.notif_test());
+        self.nbtn_save.set_text(l.btn_apply());
+        self.nbtn_close.set_text(l.btn_close());
+        // One URL per line (CRLF for the Win32 multiline edit control).
+        let text = self.cfg.borrow().feishu_hooks.join("\r\n");
+        self.nin_hooks.set_text(&text);
+        self.notif_window.set_visible(true);
+    }
+
+    fn notif_save(&self) {
+        let hooks = crate::config::parse_hooks(&self.nin_hooks.text());
+        {
+            let mut cfg = self.cfg.borrow_mut();
+            cfg.feishu_hooks = hooks;
+            cfg.save(&self.dir());
+        }
+        self.info(self.lang().msg_saved());
+    }
+
+    fn notif_test(&self) {
+        // Test against what's currently typed, even if not saved yet.
+        let hooks = crate::config::parse_hooks(&self.nin_hooks.text());
+        if hooks.is_empty() {
+            self.info(self.lang().notif_test_empty());
+            return;
+        }
+        runner::notify_feishu(&hooks, self.lang().notif_test_text());
+        self.info(self.lang().notif_test_sent());
+    }
+
+    fn notif_hide(&self) {
+        self.notif_window.set_visible(false);
+    }
+    fn notif_on_close(&self, data: &nwg::EventData) {
+        if let nwg::EventData::OnWindowClose(c) = data {
+            c.close(false);
+        }
+        self.notif_window.set_visible(false);
     }
 }
 

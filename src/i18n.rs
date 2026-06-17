@@ -191,4 +191,42 @@ impl Lang {
     pub fn warm_never(self) -> &'static str {
         self.pick("(not run yet)", "（尚未執行）")
     }
+
+    // ---- notifications (Feishu) window ------------------------------------
+    pub fn notif_title(self) -> &'static str {
+        self.pick("ClaudeWakeup — Push", "ClaudeWakeup — 推播")
+    }
+    pub fn notif_intro(self) -> &'static str {
+        self.pick(
+            "Feishu/Lark bot webhook URLs — one per line. Every one is notified \
+             when a task finishes, so you can push to multiple users/groups. \
+             Leave empty to turn notifications off.",
+            "飛書／Lark 機器人 Webhook 網址，每行一個。任務完成時會通知每一個，\
+             因此可同時推播給多位用戶／群組。留空即關閉通知。",
+        )
+    }
+    pub fn notif_hooks_lbl(self) -> &'static str {
+        self.pick("Webhook URLs", "Webhook 網址")
+    }
+    pub fn notif_test(self) -> &'static str {
+        self.pick("Send test", "傳送測試")
+    }
+    pub fn notif_test_sent(self) -> &'static str {
+        self.pick(
+            "Test message sent to all listed webhooks. Check Feishu.",
+            "已向所有列出的 Webhook 傳送測試訊息，請至飛書確認。",
+        )
+    }
+    pub fn notif_test_empty(self) -> &'static str {
+        self.pick(
+            "Add at least one webhook URL first.",
+            "請先填入至少一個 Webhook 網址。",
+        )
+    }
+    pub fn notif_test_text(self) -> &'static str {
+        self.pick(
+            "🔔 ClaudeWakeup test — your Feishu push is working.",
+            "🔔 ClaudeWakeup 測試 — 您的飛書推播已正常運作。",
+        )
+    }
 }

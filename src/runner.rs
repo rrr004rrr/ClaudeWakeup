@@ -87,13 +87,21 @@ pub fn run_task_by_id(dir: &Path, id: &str) {
             time = local_time_string(),
             log = out_path.display(),
         );
-        notify_feishu(&cfg.feishu_hook, &text);
+        notify_feishu(&cfg.feishu_hooks, &text);
     }
 }
 
-/// POST a text message to a Feishu/Lark custom-bot webhook. Uses the built-in
-/// `curl.exe` (Windows 10+) so no HTTP/TLS dependency is needed. Best-effort.
-fn notify_feishu(hook: &str, text: &str) {
+/// POST a text message to every configured Feishu/Lark custom-bot webhook, so
+/// multiple users/groups can each receive the notification. Best-effort.
+pub fn notify_feishu(hooks: &[String], text: &str) {
+    for hook in hooks {
+        notify_one(hook, text);
+    }
+}
+
+/// POST a text message to a single Feishu/Lark custom-bot webhook. Uses the
+/// built-in `curl.exe` (Windows 10+) so no HTTP/TLS dependency is needed.
+fn notify_one(hook: &str, text: &str) {
     if hook.trim().is_empty() {
         return;
     }
@@ -234,6 +242,6 @@ pub fn run_keep_warm(cfg: &Config) {
             verb = if ok { "OK" } else { "失敗" },
             line = line,
         );
-        notify_feishu(&cfg.feishu_hook, &text);
+        notify_feishu(&cfg.feishu_hooks, &text);
     }
 }

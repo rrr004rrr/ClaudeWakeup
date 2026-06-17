@@ -18,8 +18,10 @@ pub struct Config {
     pub warm_daily_times: Vec<(u8, u8)>,
     pub warm_model: String,
     pub warm_prompt: String,
-    /// Feishu (Lark) custom-bot webhook; notified when a task finishes. Empty = off.
-    pub feishu_hook: String,
+    /// Feishu (Lark) custom-bot webhooks; every one is notified when a task
+    /// finishes. Supports multiple recipients (one bot per user/group). Empty
+    /// list = off.
+    pub feishu_hooks: Vec<String>,
     /// Also send a Feishu notification after each keep-warm ping. Off by default
     /// (warm pings are frequent — this would be noisy).
     pub warm_notify: bool,
@@ -36,9 +38,10 @@ impl Default for Config {
             warm_daily_times: vec![(7, 0), (12, 0), (17, 0), (22, 0)],
             warm_model: "haiku".to_string(),
             warm_prompt: "hi".to_string(),
-            feishu_hook:
+            feishu_hooks: vec![
                 "https://open.feishu.cn/open-apis/bot/v2/hook/5185de2e-16ed-482b-b8e9-333bf80204fc"
                     .to_string(),
+            ],
             warm_notify: false,
         }
     }
@@ -48,6 +51,17 @@ impl Config {
     pub fn is_daily(&self) -> bool {
         self.warm_mode.eq_ignore_ascii_case("daily")
     }
+}
+
+/// Parse one or more webhook URLs from free-form text. Accepts newline- and
+/// comma-separated entries (the settings textbox uses one URL per line); blank
+/// entries are dropped. Shared by config load and the Notifications window.
+pub fn parse_hooks(text: &str) -> Vec<String> {
+    text.split(['\n', '\r', ','])
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+        .collect()
 }
 
 fn config_path(dir: &Path) -> PathBuf {
@@ -84,6 +98,11 @@ impl Config {
         match std::fs::read_to_string(config_path(dir)) {
             Ok(text) => {
                 let mut c = Config::default();
+                // Collect feishu hooks separately so multiple `feishu_hook` /
+                // `feishu_hooks` lines accumulate instead of overwriting (and so
+                // they replace the default rather than appending to it).
+                let mut hooks: Vec<String> = Vec::new();
+                let mut saw_hooks = false;
                 for line in text.lines() {
                     let line = line.trim();
                     if line.is_empty() || line.starts_with('#') {
@@ -108,7 +127,10 @@ impl Config {
                             "warm_daily_times" => c.warm_daily_times = parse_times(&v),
                             "warm_model" if !v.is_empty() => c.warm_model = v,
                             "warm_prompt" if !v.is_empty() => c.warm_prompt = v,
-                            "feishu_hook" => c.feishu_hook = v,
+                            "feishu_hook" | "feishu_hooks" => {
+                                saw_hooks = true;
+                                hooks.extend(parse_hooks(&v));
+                            }
                             "warm_notify" => {
                                 c.warm_notify = v.eq_ignore_ascii_case("true") || v == "1"
                             }
@@ -129,6 +151,11 @@ impl Config {
                         }
                     }
                 }
+                // An explicit (even empty) hooks key turns notifications off when
+                // cleared; absence keeps the default.
+                if saw_hooks {
+                    c.feishu_hooks = hooks;
+                }
                 c
             }
             Err(_) => {
@@ -140,6 +167,17 @@ impl Config {
     }
 
     pub fn save(&self, dir: &Path) {
+        // One `feishu_hook = …` line per recipient (or an empty line when off),
+        // so the file stays hand-editable and round-trips cleanly.
+        let hooks_block = if self.feishu_hooks.is_empty() {
+            "feishu_hook =".to_string()
+        } else {
+            self.feishu_hooks
+                .iter()
+                .map(|h| format!("feishu_hook = {h}"))
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
         let text = format!(
             "# ClaudeWakeup settings. Edited from the tray app; safe to hand-edit too.\n\
              \n\
@@ -160,8 +198,9 @@ impl Config {
              # Also notify Feishu after each keep-warm ping (noisy; off by default).\n\
              warm_notify = {wn}\n\
              \n\
-             # Feishu/Lark bot webhook — notified when a task finishes. Empty = off.\n\
-             feishu_hook = {fh}\n",
+             # Feishu/Lark bot webhooks — every one is notified when a task finishes.\n\
+             # Add one `feishu_hook = <url>` line per recipient. No lines / empty = off.\n\
+             {hooks}\n",
             lang = self.language.code(),
             claude = self.claude_path,
             we = self.warm_enabled,
@@ -171,7 +210,7 @@ impl Config {
             wm = self.warm_model,
             wp = self.warm_prompt,
             wn = self.warm_notify,
-            fh = self.feishu_hook,
+            hooks = hooks_block,
         );
         let _ = std::fs::write(config_path(dir), text);
     }

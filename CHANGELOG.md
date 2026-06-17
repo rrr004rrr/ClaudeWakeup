@@ -6,6 +6,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-17
+
+### Added
+- **Multiple Feishu/Lark webhooks** — task-completion and keep-warm notifications
+  are now sent to *every* configured webhook, so you can push to several
+  users/groups at once (previously a single `feishu_hook`).
+- **Push settings window** — a new tray menu item (**推播設定 / Push**) opens a
+  dedicated page to fill in the Feishu bot webhook URLs (one per line), with a
+  **Send test** button that posts a test message to all listed webhooks. No more
+  hand-editing the config file to manage recipients.
+
+### Changed
+- Config: `feishu_hook` now accepts **multiple recipients** — add one
+  `feishu_hook = <url>` line per webhook. A single line still works, and the old
+  single-value config is read unchanged (backward compatible).
+
 ## [0.2.0] - 2026-06-16
 
 ### Added
@@ -68,5 +84,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Size-optimized release build profile (`opt-level = "z"`, LTO, stripped,
   `panic = abort`).
 
+[0.3.0]: https://github.com/rrr004rrr/ClaudeWakeup/releases/tag/v0.3.0
 [0.2.0]: https://github.com/rrr004rrr/ClaudeWakeup/releases/tag/v0.2.0
 [0.1.0]: https://github.com/rrr004rrr/ClaudeWakeup/releases/tag/v0.1.0

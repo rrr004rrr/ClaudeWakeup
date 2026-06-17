@@ -59,6 +59,7 @@ A config file (`claude-wakeup.toml`), task file (`tasks.json`), and output
 |----------------------|-------------------------------------------------------|
 | **Task manager…**    | Open the task list + create/edit window               |
 | **Keep-warm…**       | Settings + live test for the original wakeup ping     |
+| **Push…**            | Manage Feishu/Lark webhook URLs + send a test push    |
 | **Language**         | Switch English / 繁體中文 (the window re-labels live)  |
 | **Quit**             | Remove the icon and exit                              |
 
@@ -109,6 +110,23 @@ tray ("Keep-warm…"):
 > Waking only works while the PC is on AC power (Windows disables wake timers on
 > battery by default).
 
+## Push settings window (Feishu / Lark)
+
+ClaudeWakeup can push a message to a [Feishu/Lark custom bot](https://www.feishu.cn/hc/en-US/articles/360024984973)
+when a task finishes (and, optionally, after each keep-warm ping). Open **Push…**
+from the tray to manage recipients without hand-editing the config:
+
+- **Webhook URLs** — paste one bot webhook URL **per line**. Every URL listed is
+  notified, so you can push to **multiple users or groups** at once.
+- **Send test** — posts a test message to all listed webhooks right away, so you
+  can confirm each bot is wired up correctly. It tests what's currently typed,
+  even before you save.
+- **Save** — writes the URLs back to `claude-wakeup.toml` (one
+  `feishu_hook = <url>` line per recipient). Clear the box to turn pushes off.
+
+> To get a webhook: in Feishu/Lark, add a **Custom Bot** to a group, copy its
+> webhook URL, and paste it here. Each user/group gets its own bot + URL.
+
 ## Important: sleep & wake prerequisites
 
 - Waking only works while the PC is **on AC power** — Windows disables wake timers
@@ -137,22 +155,26 @@ warm_prompt = hi
 # Also notify Feishu after each keep-warm ping (noisy; off by default).
 warm_notify = false
 
-# Feishu/Lark bot webhook: notified when a task finishes. Empty = off.
+# Feishu/Lark bot webhooks: every one is notified when a task finishes.
+# Add one `feishu_hook = <url>` line per recipient. No lines / empty = off.
 feishu_hook = https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxxx
+feishu_hook = https://open.feishu.cn/open-apis/bot/v2/hook/yyyyyyyy
 ```
 
 Language can also be switched from the tray menu (it writes back to this file).
 
 **Task-done notification (Feishu)**: after each task finishes, a text message is
-`curl`-POSTed to `feishu_hook` (✅ done / ❌ failed, with the task name, outcome,
-time, and output-log path) — so you learn when a task completes. Clear the
-`feishu_hook` value to turn it off.
+`curl`-POSTed to **every** configured `feishu_hook` (✅ done / ❌ failed, with the
+task name, outcome, time, and output-log path) — so you, and any other users you
+add, learn when a task completes. Manage the recipient list from the **Push**
+window (one URL per line) or by adding `feishu_hook = <url>` lines here; clear them
+all to turn it off.
 
 **Keep-warm notification (optional)**: by default keep-warm pings do **not**
 notify (they're far more frequent than tasks). To notify on every ping, tick
-"Enable push" in **Keep-warm**, or set `warm_notify = true` in the config (a
-`feishu_hook` is still required). "Ping now" follows the "Enable push" checkbox,
-so it doubles as a push test.
+"Enable push" in **Keep-warm**, or set `warm_notify = true` in the config (at
+least one `feishu_hook` is still required). "Ping now" follows the "Enable push"
+checkbox, so it doubles as a push test.
 
 ## Run at startup
 
