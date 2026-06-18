@@ -1,42 +1,31 @@
-//! Small shared helpers (local time formatting, filename sanitizing).
+//! Small shared helpers (local time formatting, filename sanitizing, resolving
+//! the Claude CLI path). Cross-platform: local time comes from `chrono`.
 
+#[cfg(windows)]
 use std::path::PathBuf;
 
-use windows::Win32::Foundation::SYSTEMTIME;
-use windows::Win32::System::SystemInformation::GetLocalTime;
-
-pub fn local_time() -> SYSTEMTIME {
-    unsafe { GetLocalTime() }
-}
+use chrono::Local;
 
 /// "YYYY-MM-DD HH:MM:SS" in local time.
 pub fn local_time_string() -> String {
-    let st = local_time();
-    format!(
-        "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
-        st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond
-    )
+    Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
 }
 
 /// "YYYYMMDD-HHMMSS" — for log filenames and task ids.
 pub fn timestamp_compact() -> String {
-    let st = local_time();
-    format!(
-        "{:04}{:02}{:02}-{:02}{:02}{:02}",
-        st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond
-    )
+    Local::now().format("%Y%m%d-%H%M%S").to_string()
 }
 
-/// Resolve a program name to a path the OS can actually spawn.
+/// Resolve a program name to something the OS can actually spawn.
 ///
 /// On Windows `std::process::Command` only finds `name` and `name.exe` on PATH —
-/// it does **not** honor PATHEXT, so an npm-installed `claude.cmd` or a `.bat`
-/// shim (and Claude's `~\.local\bin` install) shows up as "program not found".
-/// This searches PATH (plus a couple of common Claude install dirs) trying the
-/// usual Windows executable extensions and returns the first hit. Falls back to
-/// the input unchanged so the caller's spawn error still surfaces if nothing
-/// matches. `.cmd`/`.bat` results are safe to hand to `Command` on modern Rust
-/// (it runs batch files via `cmd.exe` with proper argument escaping).
+/// it does **not** honor PATHEXT, so an npm-installed `claude.cmd` / `.bat` shim
+/// (and Claude's `~\.local\bin` install) shows up as "program not found". There
+/// we search PATH plus the common Claude install dirs, trying the usual Windows
+/// executable extensions, and return the first hit. On Unix (macOS) `Command`
+/// already resolves bare names against PATH, so the name is returned unchanged
+/// (the runner widens PATH itself — see `platform::augment_path`).
+#[cfg(windows)]
 pub fn resolve_program(name: &str) -> String {
     const EXTS: [&str; 4] = ["exe", "cmd", "bat", "com"];
     let name = name.trim();
@@ -93,8 +82,14 @@ pub fn resolve_program(name: &str) -> String {
     name.to_string()
 }
 
+/// Non-Windows: `Command` resolves bare names against PATH already.
+#[cfg(not(windows))]
+pub fn resolve_program(name: &str) -> String {
+    name.trim().to_string()
+}
+
 /// Keep only ASCII alphanumerics, dashes and underscores — safe for filenames
-/// and Task Scheduler job names.
+/// and scheduled-job names.
 pub fn sanitize(s: &str) -> String {
     s.chars()
         .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
