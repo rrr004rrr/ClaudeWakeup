@@ -1,24 +1,18 @@
-//! Headless task execution. `ClaudeWakeup.exe --run-task <id>` runs one task
-//! from the store, keeps the machine awake for the duration, captures the full
-//! output to logs\, and writes the result status back to tasks.json.
+//! Headless task execution. `ClaudeWakeup --run-task <id>` runs one task from the
+//! store, keeps the machine awake for the duration, captures the full output to
+//! logs/, and writes the result status back to tasks.json.
 
 use std::fs::OpenOptions;
 use std::io::Write as _;
-use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-use windows::Win32::System::Power::{
-    SetThreadExecutionState, ES_CONTINUOUS, ES_SYSTEM_REQUIRED,
-};
-
 use crate::config::Config;
+use crate::platform;
 use crate::task::{load_tasks, save_tasks, Status, Task};
 use crate::util::{local_time_string, resolve_program, sanitize, timestamp_compact};
-
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 /// Run the task with the given id. Updates its status in tasks.json.
 pub fn run_task_by_id(dir: &Path, id: &str) {
@@ -35,11 +29,8 @@ pub fn run_task_by_id(dir: &Path, id: &str) {
     let _ = save_tasks(dir, &tasks);
     let task = tasks[idx].clone();
 
-    // Keep the machine awake for the whole run. CPU activity alone does NOT
-    // stop Windows from sleeping — only this request does.
-    unsafe {
-        SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED);
-    }
+    // Keep the machine awake for the whole run (RAII; released on drop).
+    let _awake = platform::keep_awake();
 
     let logs_dir = dir.join("logs");
     let _ = std::fs::create_dir_all(&logs_dir);
@@ -50,10 +41,6 @@ pub fn run_task_by_id(dir: &Path, id: &str) {
     ));
 
     let result = run_one(&cfg, &task, dir, &out_path);
-
-    unsafe {
-        SetThreadExecutionState(ES_CONTINUOUS);
-    }
 
     // Reload (the GUI may have edited the file meanwhile) and update this task.
     let mut tasks = load_tasks(dir);
@@ -76,7 +63,12 @@ pub fn run_task_by_id(dir: &Path, id: &str) {
     }
     let _ = save_tasks(dir, &tasks);
 
-    // Notify the Feishu bot that the task finished.
+    // A "once" task fires only once: remove its scheduled job now that it has run.
+    if task.freq != "daily" {
+        let _ = platform::unregister(id);
+    }
+
+    // Notify every configured Feishu bot that the task finished.
     if let Some((ok, outcome)) = note {
         let text = format!(
             "{icon} ClaudeWakeup 任務{verb}：{name}\n結果：{outcome}\n時間：{time}\n輸出：{log}",
@@ -99,8 +91,8 @@ pub fn notify_feishu(hooks: &[String], text: &str) {
     }
 }
 
-/// POST a text message to a single Feishu/Lark custom-bot webhook. Uses the
-/// built-in `curl.exe` (Windows 10+) so no HTTP/TLS dependency is needed.
+/// POST a text message to a single Feishu/Lark custom-bot webhook. Uses `curl`
+/// (present on Windows 10+ and macOS) so no HTTP/TLS dependency is needed.
 fn notify_one(hook: &str, text: &str) {
     if hook.trim().is_empty() {
         return;
@@ -115,22 +107,22 @@ fn notify_one(hook: &str, text: &str) {
     if std::fs::write(&tmp, &body).is_err() {
         return;
     }
-    let _ = Command::new("curl")
-        .args([
-            "-s",
-            "-S",
-            "-m",
-            "20",
-            "-X",
-            "POST",
-            "-H",
-            "Content-Type: application/json; charset=utf-8",
-            "--data-binary",
-        ])
-        .arg(format!("@{}", tmp.display()))
-        .arg(hook)
-        .creation_flags(CREATE_NO_WINDOW)
-        .output();
+    let mut cmd = Command::new("curl");
+    cmd.args([
+        "-s",
+        "-S",
+        "-m",
+        "20",
+        "-X",
+        "POST",
+        "-H",
+        "Content-Type: application/json; charset=utf-8",
+        "--data-binary",
+    ])
+    .arg(format!("@{}", tmp.display()))
+    .arg(hook);
+    platform::configure_command(&mut cmd);
+    let _ = cmd.output();
     let _ = std::fs::remove_file(&tmp);
 }
 
@@ -180,7 +172,8 @@ fn run_one(
     cmd.current_dir(&cwd);
     cmd.stdout(Stdio::from(out_file));
     cmd.stderr(Stdio::from(err_file));
-    cmd.creation_flags(CREATE_NO_WINDOW);
+    platform::configure_command(&mut cmd);
+    platform::augment_path(&mut cmd);
 
     let mut child = cmd.spawn()?;
     let deadline = Instant::now() + Duration::from_secs(task.timeout_min.max(1) * 60);
@@ -214,7 +207,8 @@ pub fn run_keep_warm(cfg: &Config) {
     if !cfg.warm_model.is_empty() {
         cmd.arg("--model").arg(&cfg.warm_model);
     }
-    cmd.creation_flags(CREATE_NO_WINDOW);
+    platform::configure_command(&mut cmd);
+    platform::augment_path(&mut cmd);
 
     let t = local_time_string();
     let (ok, line) = match cmd.output() {

@@ -11,3 +11,6 @@ claude-wakeup.toml
 claude-wakeup.log
 tasks.json
 /logs
+
+# macOS
+.DS_Store

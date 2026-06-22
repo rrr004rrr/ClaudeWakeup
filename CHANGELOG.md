@@ -6,6 +6,45 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- **macOS support.** ClaudeWakeup now runs on macOS as a menu-bar app with the
+  same features as Windows:
+  - Scheduling uses **launchd** LaunchAgents (`StartCalendarInterval`) plus
+    **`pmset schedule wake`** to wake the Mac from sleep. `pmset` needs root, so
+    wake arming runs through a one-time admin prompt (`osascript … with
+    administrator privileges`).
+  - Runs are kept awake with **`caffeinate`**; logs open in the default app
+    (`open`); Feishu notifications reuse the bundled `curl`.
+  - The `claude` CLI is found even under launchd's minimal PATH by prepending the
+    usual install locations (`~/.local/bin`, Homebrew, npm) to the child's PATH.
+    The headless `--keep-warm` now also prints its result for log visibility.
+  - `build.sh` assembles a `dist/ClaudeWakeup.app` bundle (`LSUIElement` → pure
+    menu-bar app, no Dock icon); `install-startup.sh` installs a login LaunchAgent.
+  - Data lives in `~/.claudewakeup/` — a plain hidden folder in `$HOME`, chosen
+    over `~/Library/Application Support` so an unsigned app doesn't trigger the
+    macOS "access other app data" / iCloud prompts on every launch.
+  - Wake arming via `pmset` is **opt-in**: it only runs (and only then shows the
+    admin prompt) when you press the "Arm Mac wake" button in the Keep-warm tab —
+    never automatically on Save, so there's no surprise password prompt.
+  - launchd jobs are only (re)loaded when their plist actually changes, so macOS
+    doesn't show the "background activity" notification on every launch. On launch
+    the active jobs are re-pointed at the current binary, so moving the app (e.g.
+    into `/Applications`) doesn't leave jobs aimed at a stale path.
+
+### Changed
+- **GUI rebuilt on egui/eframe** as a single cross-platform codebase shared by
+  Windows and macOS (replacing the Windows-only native-windows-gui). The task
+  manager, keep-warm, and push screens are now **tabs in one window**, opened from
+  a cross-platform tray / menu-bar icon (tray-icon). Closing the window hides it
+  back to the tray. The task list refreshes live as the headless runner updates
+  status.
+- OS-specific code (scheduling, keep-awake, file open, wake) is isolated behind a
+  `platform/` module (`windows.rs` / `macos.rs`).
+- Local time now comes from `chrono` instead of the Win32 `GetLocalTime` API.
+- System CJK fonts are loaded at runtime so 繁體中文 renders in egui (PingFang /
+  Hiragino / STHeiti / Arial Unicode on macOS; Microsoft JhengHei / YaHei on
+  Windows).
+
 ## [0.3.1] - 2026-06-17
 
 ### Fixed

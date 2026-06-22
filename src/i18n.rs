@@ -31,10 +31,21 @@ impl Lang {
         }
     }
 
-    // ---- manager window ---------------------------------------------------
-    pub fn win_title(self) -> &'static str {
-        self.pick("ClaudeWakeup — Tasks", "ClaudeWakeup — 任務")
+    // ---- tabs -------------------------------------------------------------
+    pub fn tab_tasks(self) -> &'static str {
+        self.pick("Tasks", "任務")
     }
+    pub fn tab_warm(self) -> &'static str {
+        self.pick("Keep-warm", "保溫")
+    }
+    pub fn tab_push(self) -> &'static str {
+        self.pick("Push", "推播")
+    }
+    pub fn no_tasks(self) -> &'static str {
+        self.pick("No tasks yet — fill the form below and Save.", "尚無任務 — 填寫下方表單後按「儲存任務」。")
+    }
+
+    // ---- manager window ---------------------------------------------------
     pub fn lbl_name(self) -> &'static str {
         self.pick("Name", "名稱")
     }
@@ -83,10 +94,6 @@ impl Lang {
     pub fn btn_view_output(self) -> &'static str {
         self.pick("View output", "查看輸出")
     }
-    pub fn btn_close(self) -> &'static str {
-        self.pick("Close", "關閉")
-    }
-
     // ---- list columns + status -------------------------------------------
     pub fn col_name(self) -> &'static str {
         self.pick("Name", "名稱")
@@ -114,9 +121,6 @@ impl Lang {
     }
 
     // ---- messages ---------------------------------------------------------
-    pub fn title_info(self) -> &'static str {
-        self.pick("ClaudeWakeup", "ClaudeWakeup")
-    }
     pub fn msg_need_prompt(self) -> &'static str {
         self.pick(
             "Please enter a task message and a time (HH:MM).",
@@ -149,9 +153,6 @@ impl Lang {
     }
 
     // ---- keep-warm window -------------------------------------------------
-    pub fn warm_title(self) -> &'static str {
-        self.pick("ClaudeWakeup — Keep-warm", "ClaudeWakeup — 保溫")
-    }
     pub fn warm_enabled_lbl(self) -> &'static str {
         self.pick("Enable keep-warm", "啟用保溫")
     }
@@ -192,10 +193,7 @@ impl Lang {
         self.pick("(not run yet)", "（尚未執行）")
     }
 
-    // ---- notifications (Feishu) window ------------------------------------
-    pub fn notif_title(self) -> &'static str {
-        self.pick("ClaudeWakeup — Push", "ClaudeWakeup — 推播")
-    }
+    // ---- notifications (Feishu) push tab ----------------------------------
     pub fn notif_intro(self) -> &'static str {
         self.pick(
             "Feishu/Lark bot webhook URLs — one per line. Every one is notified \
@@ -228,5 +226,19 @@ impl Lang {
             "🔔 ClaudeWakeup test — your Feishu push is working.",
             "🔔 ClaudeWakeup 測試 — 您的飛書推播已正常運作。",
         )
+    }
+
+    // ---- macOS wake (opt-in) ----------------------------------------------
+    pub fn warm_arm_wake(self) -> &'static str {
+        self.pick("Arm Mac wake (admin)…", "設定 Mac 喚醒（需管理員）…")
+    }
+    pub fn warm_wake_hint(self) -> &'static str {
+        self.pick(
+            "macOS only: wake the Mac from sleep for all scheduled times (tasks + keep-warm). Asks for your password once via pmset; otherwise jobs run only when the Mac is awake.",
+            "僅 macOS：讓 Mac 到點從睡眠喚醒，涵蓋所有排程時間（任務＋保溫）。會透過 pmset 要求一次密碼；不設定的話，排程只在 Mac 醒著時執行。",
+        )
+    }
+    pub fn msg_wake_armed(self) -> &'static str {
+        self.pick("Wake schedule armed (or cleared).", "已設定／清除喚醒排程。")
     }
 }

@@ -1,25 +1,69 @@
-//! Register / unregister a Windows Task Scheduler job per task. Each job is set
-//! to *wake the computer* so it runs even if the machine is asleep and the user
-//! is away. We shell out to PowerShell's ScheduledTask cmdlets (no extra deps).
+//! Windows backend: Task Scheduler jobs (set to *wake the computer*), driven via
+//! PowerShell's ScheduledTask cmdlets, plus the keep-awake power request. No extra
+//! crates beyond `windows` for the power API.
 
 use std::os::windows::process::CommandExt;
 use std::path::Path;
 use std::process::Command;
 
+use windows::Win32::System::Power::{
+    SetThreadExecutionState, ES_CONTINUOUS, ES_SYSTEM_REQUIRED, EXECUTION_STATE,
+};
+
 use crate::task::Task;
 
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
-pub fn job_name(id: &str) -> String {
+/// Add `CREATE_NO_WINDOW` so spawned CLIs don't flash a console window.
+pub fn configure_command(cmd: &mut Command) {
+    cmd.creation_flags(CREATE_NO_WINDOW);
+}
+
+/// Task Scheduler inherits the system PATH, so `claude.exe` is normally found;
+/// nothing extra to do on Windows.
+pub fn augment_path(_cmd: &mut Command) {}
+
+/// RAII guard that keeps the machine awake (system required) until dropped.
+pub struct KeepAwake;
+
+pub fn keep_awake() -> KeepAwake {
+    // CPU activity alone does NOT stop Windows from sleeping — only this request does.
+    unsafe {
+        SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED);
+    }
+    KeepAwake
+}
+
+impl Drop for KeepAwake {
+    fn drop(&mut self) {
+        unsafe {
+            SetThreadExecutionState(EXECUTION_STATE(ES_CONTINUOUS.0));
+        }
+    }
+}
+
+/// Open a file or folder with its default handler.
+pub fn open_path(path: &str) {
+    let mut cmd = Command::new("cmd");
+    cmd.args(["/C", "start", "", path]);
+    configure_command(&mut cmd);
+    let _ = cmd.spawn();
+}
+
+/// Windows wakes per-task via `-WakeToRun`, so there's nothing extra to arm.
+pub fn sync_wake_schedule(_times: &[(u8, u8)]) -> Result<(), String> {
+    Ok(())
+}
+
+fn job_name(id: &str) -> String {
     format!("ClaudeWakeup-{}", id)
 }
 
 fn run_ps(script: &str) -> Result<(), String> {
-    let out = Command::new("powershell")
-        .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script])
-        .creation_flags(CREATE_NO_WINDOW)
-        .output()
-        .map_err(|e| e.to_string())?;
+    let mut cmd = Command::new("powershell");
+    cmd.args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script]);
+    configure_command(&mut cmd);
+    let out = cmd.output().map_err(|e| e.to_string())?;
     if out.status.success() {
         Ok(())
     } else {
@@ -102,11 +146,10 @@ pub fn unregister_warm() -> Result<(), String> {
 /// Remove the scheduled job for a task id (ignores "not found").
 pub fn unregister(id: &str) -> Result<(), String> {
     let name = job_name(id);
-    let script = format!(
+    run_ps(&format!(
         "Unregister-ScheduledTask -TaskName '{}' -Confirm:$false -ErrorAction SilentlyContinue",
         name
-    );
-    run_ps(&script)
+    ))
 }
 
 fn parse_hhmm(s: &str) -> (u32, u32) {

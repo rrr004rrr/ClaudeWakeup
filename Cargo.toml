@@ -2,32 +2,35 @@
 name = "claude-wakeup"
 version = "0.3.1"
 edition = "2021"
-description = "Tiny Windows tray app that pings the Claude CLI on a schedule to keep the token/usage window warm."
+description = "Tiny cross-platform tray app that pings the Claude CLI on a schedule to keep the token/usage window warm, and runs overnight tasks that wake the machine."
 
 [[bin]]
 name = "ClaudeWakeup"
 path = "src/main.rs"
 
 [dependencies]
-native-windows-gui = { version = "1.0", default-features = false, features = [
-    "tray-notification",
-    "message-window",
-    "menu",
-    "textbox",
-    "combobox",
-    "list-view",
-    "file-dialog",
-    "image-decoder",
-    "cursor",
-    "frame",
-    "tooltip",
-] }
-native-windows-derive = "1.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+
+# Cross-platform GUI: a single egui/eframe codebase shared by Windows and macOS,
+# with a system-tray / menu-bar icon via tray-icon.
+eframe = { version = "0.29", default-features = false, features = [
+    "glow",
+    "default_fonts",
+    "wayland",
+    "x11",
+] }
+egui = "0.29"
+tray-icon = "0.19"
+image = { version = "0.25", default-features = false, features = ["ico"] }
+rfd = "0.15"
+
+# Windows-only: Task Scheduler is driven via PowerShell (no crate), but we use the
+# windows crate for the keep-awake power request.
+[target.'cfg(windows)'.dependencies]
 windows = { version = "0.58", features = [
     "Win32_Foundation",
-    "Win32_System_SystemInformation",
     "Win32_System_Power",
 ] }
 
