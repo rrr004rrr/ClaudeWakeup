@@ -79,6 +79,9 @@ pub struct App {
 
     // keep-warm form mirrors cfg until saved
     last_warm: String,
+    /// Raw keep-warm text inputs, parsed into cfg only on Save.
+    warm_daily_input: String,
+    warm_interval_input: String,
     /// Push tab: Feishu webhook URLs, one per line (mirrors cfg.feishu_hooks).
     push_hooks: String,
 
@@ -101,6 +104,8 @@ impl App {
         let lang = cfg.language;
         let tasks = load_tasks(&dir);
         let push_hooks = cfg.feishu_hooks.join("\n");
+        let warm_daily_input = times_str(&cfg.warm_daily_times);
+        let warm_interval_input = cfg.warm_interval_minutes.to_string();
 
         // Build the tray menu (bilingual labels, so no relabel on language switch).
         let menu = Menu::new();
@@ -158,6 +163,8 @@ impl App {
             form: TaskForm::default(),
             last_reload: Instant::now(),
             last_warm: String::new(),
+            warm_daily_input,
+            warm_interval_input,
             push_hooks,
             _tray: tray,
             id_tasks,
@@ -199,11 +206,14 @@ impl App {
         ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
     }
 
-    /// All clock times the machine should wake for: task times + warm daily times.
+    /// All clock times the machine should wake for: still-active task times (same
+    /// active filter as `reschedule_tasks`, so a finished once-task no longer arms
+    /// a wake) plus warm daily times.
     fn collect_wake_times(&self) -> Vec<(u8, u8)> {
         let mut times: Vec<(u8, u8)> = self
             .tasks
             .iter()
+            .filter(|t| t.freq == "daily" || matches!(t.status, Status::Pending | Status::Running))
             .filter_map(|t| parse_hhmm(&t.time))
             .collect();
         if self.cfg.warm_enabled && self.cfg.is_daily() {
@@ -323,8 +333,10 @@ impl App {
             }
             let _ = save_tasks(&self.dir, &tasks);
             let _ = platform::unregister(&id);
-            let _ = platform::register(&self.exe, &self.dir, &task);
-            self.status = self.lang().msg_updated().to_string();
+            self.status = match platform::register(&self.exe, &self.dir, &task) {
+                Ok(_) => self.lang().msg_updated().to_string(),
+                Err(_) => self.lang().msg_sched_failed().to_string(),
+            };
         } else {
             let id = format!("{}-{:03}", timestamp_compact(), self.counter);
             self.counter += 1;
@@ -394,6 +406,13 @@ impl App {
     }
 
     fn warm_save(&mut self) {
+        // Parse the raw inputs into the config, then normalize the fields back
+        // from the parsed values so the boxes show the cleaned-up result.
+        self.cfg.warm_daily_times = parse_times_field(&self.warm_daily_input);
+        self.cfg.warm_interval_minutes =
+            self.warm_interval_input.trim().parse::<u64>().unwrap_or(300).max(1);
+        self.warm_daily_input = times_str(&self.cfg.warm_daily_times);
+        self.warm_interval_input = self.cfg.warm_interval_minutes.to_string();
         self.cfg.save(&self.dir);
         self.reschedule_warm();
         self.status = self.lang().msg_saved().to_string();
@@ -628,27 +647,21 @@ impl App {
         });
         self.cfg.warm_mode = if daily { "daily" } else { "interval" }.to_string();
 
+        // Free-text fields are edited as raw strings and parsed only on Save, so a
+        // partial entry (e.g. "09:00,") isn't parsed → dropped → reverted mid-type.
         if daily {
             ui.horizontal(|ui| {
                 ui.label(l.warm_daily_lbl());
-                let mut s = times_str(&self.cfg.warm_daily_times);
-                if ui
-                    .add(egui::TextEdit::singleline(&mut s).desired_width(300.0))
-                    .changed()
-                {
-                    self.cfg.warm_daily_times = parse_times_field(&s);
-                }
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.warm_daily_input).desired_width(300.0),
+                );
             });
         } else {
             ui.horizontal(|ui| {
                 ui.label(l.warm_interval_lbl());
-                let mut s = self.cfg.warm_interval_minutes.to_string();
-                if ui
-                    .add(egui::TextEdit::singleline(&mut s).desired_width(90.0))
-                    .changed()
-                {
-                    self.cfg.warm_interval_minutes = s.trim().parse::<u64>().unwrap_or(300).max(1);
-                }
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.warm_interval_input).desired_width(90.0),
+                );
             });
         }
 
